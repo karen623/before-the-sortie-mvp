@@ -1,0 +1,16 @@
+# 機密：API 金鑰絕對不能上傳
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 遊戲紀錄與玩家存檔（留在本機）
+logs/
+saves/
+
+# macOS / 編輯器
+.DS_Store
+.vscode/settings.json

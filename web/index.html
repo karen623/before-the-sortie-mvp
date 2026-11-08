@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>出擊前夜</title>
+<style>
+  :root {
+    --night: #0f1420; --panel: #171e2d; --panel-2: #1e2738; --line: #2c3850;
+    --ink: #e9e3d4; --muted: #9aa3b5; --lamp: #e0a64a; --lamp-dim: #6b5226;
+    --clue: #7fc4a0; --danger: #d9705f;
+    --serif: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+    --sans: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 600px at 50% -200px, #1d2740 0%, var(--night) 60%);
+         color: var(--ink); font: 15px/1.6 var(--sans); min-height: 100vh; }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  h1 { font: 600 22px var(--serif); letter-spacing: .15em; margin: 0; color: var(--lamp); }
+  .stat { color: var(--muted); font-size: 14px; }
+  .stat b { color: var(--ink); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .spacer { flex: 1; }
+  button { font: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line);
+           border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--lamp); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--lamp); color: #1a1407; border-color: var(--lamp); font-weight: 600; }
+  button.on { border-color: var(--lamp); color: var(--lamp); }
+  main { display: grid; grid-template-columns: 200px 1fr 300px; gap: 16px; padding: 16px 24px; height: calc(100vh - 62px); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-height: 0; }
+  h2 { font: 600 13px var(--sans); letter-spacing: .12em; color: var(--muted); margin: 0 0 10px; }
+  #locations { display: flex; flex-direction: column; gap: 6px; }
+  #locations button { text-align: left; }
+  .center { display: flex; flex-direction: column; gap: 12px; padding: 0; background: none; border: none; }
+  .scene { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .scene h3 { font: 600 20px var(--serif); margin: 0 0 4px; }
+  .scene p { margin: 0 0 12px; color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .aff { color: var(--muted); font-size: 12px; margin-left: 4px; }
+  #log { flex: 1; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .ev { margin: 0 0 10px; }
+  .ev.system { color: var(--muted); font-size: 14px; }
+  .ev.player { text-align: right; }
+  .ev.player span { display: inline-block; background: var(--panel-2); border-radius: 10px 10px 2px 10px; padding: 6px 12px; }
+  .ev.npc .who { font-weight: 600; color: var(--lamp); }
+  .ev.npc .meta { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .ev.clue { color: var(--clue); }
+  .ev.gift { color: var(--lamp); }
+  .ev.error { color: var(--danger); }
+  form.say { display: flex; gap: 8px; }
+  form.say input { flex: 1; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+                   border-radius: 8px; padding: 10px 12px; }
+  select { font: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px; }
+  .right { display: flex; flex-direction: column; gap: 16px; padding: 0; background: none; border: none; }
+  .right section { overflow-y: auto; }
+  .clue { font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .clue b { color: var(--clue); margin-right: 6px; }
+  .clue:last-child { border-bottom: none; }
+  label.ev-pick { display: block; font-size: 13px; margin: 4px 0; }
+  .ending { position: fixed; inset: 0; background: rgba(5,8,14,.85); display: none; place-items: center; }
+  .ending.show { display: grid; }
+  .ending div { max-width: 520px; background: var(--panel); border: 1px solid var(--lamp-dim); border-radius: 14px; padding: 28px; }
+  .ending h3 { font: 600 26px var(--serif); color: var(--lamp); margin: 0 0 12px; letter-spacing: .1em; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #log { min-height: 300px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>出擊前夜</h1>
+  <span class="stat">⏰ <b id="clock">21:00</b></span>
+  <span class="stat">剩餘行動 <b id="actions">16</b></span>
+  <span class="stat" id="items"></span>
+  <span class="stat" id="fluid"></span>
+  <span class="spacer"></span>
+  <span class="stat" id="who"></span>
+  <button id="restart">重新開始</button>
+</header>
+<main>
+  <section>
+    <h2>營地</h2>
+    <div id="locations"></div>
+  </section>
+  <div class="center">
+    <div class="scene">
+      <h3 id="loc-name"></h3>
+      <p id="loc-desc"></p>
+      <div class="row" id="actions-row"></div>
+    </div>
+    <div id="log"></div>
+    <form class="say" id="say">
+      <select id="tone"><option>冷靜</option><option>熱血</option><option>溫柔</option><option>毒舌</option></select>
+      <input id="text" placeholder="先選一個人談話（每次對話 30 分鐘，最多 5 句）" autocomplete="off" disabled>
+      <button class="primary" id="send" disabled>說</button>
+    </form>
+  </div>
+  <div class="right">
+    <section style="flex: 1">
+      <h2>線索</h2>
+      <div id="clues"></div>
+    </section>
+    <section>
+      <h2>⚖️ 指認犯人</h2>
+      <select id="suspect" style="width: 100%"></select>
+      <div id="evidence" style="margin: 8px 0"></div>
+      <button id="accuse" style="width: 100%">提出指認（30 分鐘）</button>
+    </section>
+  </div>
+</main>
+<div class="ending" id="ending"><div><h3 id="end-title"></h3><p id="end-text"></p>
+  <p class="stat" id="end-clues"></p><button class="primary" onclick="api('/api/new', {}, true)">再玩一次</button></div></div>
+
+<script>
+let state = null;
+const log = [];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+async function api(path, body, resetLog) {
+  const busy = path === "/api/talk";
+  if (busy) { $("send").disabled = true; $("send").textContent = "……"; }
+  try {
+    const res = await fetch(path, body === undefined ? {} : {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    const data = await res.json();
+    if (data.error) { log.push({kind: "error", text: "⚠️ " + data.error}); renderLog(); return; }
+    if (resetLog) log.length = 0;
+    log.push(...(data.events || []));
+    state = data;
+    render();
+  } finally {
+    if (busy) $("send").textContent = "說";
+  }
+}
+
+function render() {
+  const s = state;
+  $("clock").textContent = s.clock;
+  $("actions").textContent = s.actions_left;
+  $("items").textContent = s.items.length ? "🎒 " + s.items.join("、") : "";
+  $("fluid").textContent = s.fluid_found ? "✅ 已找回脊髓液" : "";
+  $("who").textContent = `${s.player.name}｜${s.player.origin}｜${s.player.class}`;
+  if (!$("tone").dataset.init) { $("tone").value = s.player.personality; $("tone").dataset.init = 1; }
+
+  const locked = !!s.talking || !!s.fate_options || !!s.ending;
+  $("locations").innerHTML = s.locations.map((l) =>
+    `<button class="${l.id === s.location ? "on" : ""}" ${locked ? "disabled" : ""} onclick="api('/api/move', {location: '${l.id}'})">${esc(l.name)}</button>`).join("");
+
+  const here = s.locations.find((l) => l.id === s.location);
+  $("loc-name").textContent = here.name;
+  $("loc-desc").textContent = s.location_desc;
+  let row = "";
+  if (s.fate_options) {
+    row = s.fate_options.map((o) => `<button class="primary" onclick="api('/api/fate', {choice: '${o.id}'})">${esc(o.label)}</button>`).join("");
+  } else if (s.talking) {
+    row = `<span class="stat">正在和 <b>${esc(s.talking.name)}</b> 說話，還能說 ${s.talking.turns_left} 句</span>
+           <button onclick="api('/api/talk/end', {})">結束對話</button>`;
+  } else if (!s.ending) {
+    row = s.people.map((p) => `<button onclick="api('/api/talk/start', {npc: '${p.id}'})">和${esc(p.name)}談話<span class="aff">♥${p.affinity}</span></button>`).join("")
+        + `<button onclick="api('/api/search', {})">🔍 搜索這裡</button>`;
+  }
+  $("actions-row").innerHTML = row;
+  $("text").disabled = $("send").disabled = !s.talking;
+  $("text").placeholder = s.talking ? `對${s.talking.name}說……` : "先選一個人談話（每次對話 30 分鐘，最多 5 句）";
+  if (s.talking) $("text").focus();
+
+  $("clues").innerHTML = s.clues.map((c) => `<div class="clue"><b>${c.id}</b>${esc(c.text)}</div>`).join("") || '<p class="stat">還沒有線索</p>';
+  const picked = new Set([...document.querySelectorAll("#evidence input:checked")].map((x) => x.value));
+  $("suspect").innerHTML = s.suspects.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join("");
+  $("evidence").innerHTML = s.clues.map((c) => `<label class="ev-pick" title="${esc(c.text)}"><input type="checkbox" value="${c.id}" ${picked.has(c.id) ? "checked" : ""}> ${c.id} <span class="stat">${esc(c.text.slice(0, 14))}…</span></label>`).join("");
+  $("accuse").disabled = locked;
+
+  $("ending").classList.toggle("show", !!s.ending);
+  if (s.ending) {
+    $("end-title").textContent = "【" + s.ending.title + "】";
+    $("end-text").textContent = s.ending.text;
+    $("end-clues").textContent = `取得線索 ${s.clues.length} 條：` + s.clues.map((c) => c.id).join("、");
+  }
+  renderLog();
+}
+
+function renderLog() {
+  $("log").innerHTML = log.map((e) => {
+    if (e.kind === "player") return `<div class="ev player"><span>${esc(e.text)}</span></div>`;
+    if (e.kind === "npc") return `<div class="ev npc"><span class="who">${esc(e.name)}</span><span class="meta">${esc(e.emotion)}｜好感 ${e.affinity[0]} → ${e.affinity[1]}</span><div>${esc(e.text)}</div></div>`;
+    return `<div class="ev ${e.kind}">${esc(e.text)}</div>`;
+  }).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+$("say").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = $("text").value.trim();
+  if (!text) return;
+  $("text").value = "";
+  api("/api/talk", {text, tone: $("tone").value});
+});
+$("accuse").addEventListener("click", () => {
+  const evidence = [...document.querySelectorAll("#evidence input:checked")].map((x) => x.value);
+  api("/api/accuse", {suspect: $("suspect").value, evidence});
+});
+$("restart").addEventListener("click", () => api("/api/new", {}, true));
+
+log.push({kind: "system", text: "韓吉把你叫到醫療帳篷：「脊髓液全被偷了。拜託你，在 05:00 飛艇出發前查出真相。」"});
+api("/api/state");
+</script>
+</body>
+</html>
